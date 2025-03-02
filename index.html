@@ -152,7 +152,7 @@
             if (requiredRatio === 1) {
                 instructionText = shape === 'rectangle' ? 'Draw a square (width = height)' : 'Draw a circle (width = height)';
             } else {
-                instructionText = `Draw a ${shape} with one dimension ${requiredRatio} times the other`;
+                instructionText = `Draw ${shape==='rectangle' ? 'a' : 'an'} ${shape} with one dimension ${requiredRatio} times the other`;
             }
             levelInfo.textContent = `Level ${currentLevel}`;
             instructionInfo.textContent = instructionText;
