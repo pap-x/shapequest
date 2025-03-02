@@ -105,13 +105,13 @@
         .rectangle {
             position: absolute;
             background-color: rgba(0, 123, 255, 0.5);
-            border: 1px solid #007bff;
+            border: 2px solid #007bff;
             z-index: 2;
         }
         .perfect-shape {
             position: absolute;
             background-color: rgba(0, 255, 0, 0.3);
-            border: 1px solid green;
+            border: 2px solid green;
             z-index: 1;
         }
     </style>
@@ -273,6 +273,7 @@
 
             if (score >= 97.5) {
                 rectangle.style.backgroundColor = 'green';
+                rectangle.style.border = '2px solid green';
                 accuracyDiv.innerHTML = `<span style="color: green;">Perfect! Accuracy: ${score}%</span>`;
                 isAnimating = true;
                 let velocityX = 5;
