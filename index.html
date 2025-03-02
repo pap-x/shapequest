@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <title>Shape Master: Proportion Perfection</title>
+    <style>
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 800px;
+        }
+        #drawing-area {
+            width: 800px;
+            height: 600px;
+            border: 2px dashed #007bff;
+            background-color: #fff;
+            position: relative;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            cursor: crosshair;
+            overflow: hidden;
+        }
+        @media (max-width: 800px) {
+            #drawing-area {
+                width: 98vw;
+                height: 65vh;
+            }
+        }
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 800px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        #level-info {
+            font-size: 24px;
+            color: #007bff;
+            font-weight: bold;
+        }
+        #placeholder {
+            width: 250px;
+        }
+        #accuracy {
+            font-size: 18px;
+            color: #007bff;
+            font-weight: bold;
+            width: 250px;
+            text-align: right;
+        }
+        @media (max-width: 800px) {
+            .game-info {
+                width: 100vw;
+                padding: 0 10px;
+            }
+            #level-info {
+                font-size: 20px;
+                padding-left: 15px;
+            }
+            #accuracy {
+                font-size: 14px;
+                width: 190px;
+                padding-right: 5px;
+            }
+            #placeholder {
+                display: none
+            }
+        }   
+        #reset-level {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #dc3545;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-family: 'Poppins', Arial, sans-serif;
+        }
+        #reset-level:hover {
+            background-color: #c82333;
+        }
+        .rectangle {
+            position: absolute;
+            background-color: rgba(0, 123, 255, 0.5);
+            border: 1px solid #007bff;
+            z-index: 2;
+        }
+        .perfect-shape {
+            position: absolute;
+            background-color: rgba(0, 255, 0, 0.3);
+            border: 1px solid green;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>ShapeQuest</h1>
+    <p id="instruction-info"></p>
+    <div id="drawing-area"></div>
+    <div class="game-info">
+        <div id="placeholder"></div>
+        <div id="level-info">Level 1</div>
+        <div id="accuracy">Accuracy: --</div>
+    </div>
+    <button id="reset-level">Reset to Level 1</button>
+    <script>
+        const drawingArea = document.getElementById('drawing-area');
+        const levelInfo = document.getElementById('level-info');
+        const accuracyDiv = document.getElementById('accuracy');
+        const instructionInfo = document.getElementById('instruction-info')
+        const resetButton = document.getElementById('reset-level');
+        let isDrawing = false;
+        let startX, startY;
+        let currentWidth, currentHeight;
+        let rectangle = null;
+        let perfectShape = null;
+        let isAnimating = false;
+        let currentLevel = 1;
+
+        function getLevelDetails(level) {
+            const requiredRatio = Math.ceil(level / 2);
+            const shape = level % 2 === 1 ? 'rectangle' : 'ellipse';
+            return { requiredRatio, shape };
+        }
+
+        function updateLevelInfo() {
+            const { requiredRatio, shape } = getLevelDetails(currentLevel);
+            let instructionText;
+            if (requiredRatio === 1) {
+                instructionText = shape === 'rectangle' ? 'Draw a square (width = height)' : 'Draw a circle (width = height)';
+            } else {
+                instructionText = `Draw a ${shape} with one dimension ${requiredRatio} times the other`;
+            }
+            levelInfo.textContent = `Level ${currentLevel}`;
+            instructionInfo.textContent = instructionText;
+            if (currentLevel === 1) {
+                resetButton.style.display = 'none';
+            } else {
+                resetButton.style.display = 'block';
+            }
+        }
+
+        updateLevelInfo();
+
+        document.getElementById('reset-level').addEventListener('click', () => {
+            currentLevel = 1;
+            updateLevelInfo();
+            accuracyDiv.textContent = 'Accuracy: --';
+            if (rectangle) {
+                drawingArea.removeChild(rectangle);
+                rectangle = null;
+            }
+            if (perfectShape) {
+                drawingArea.removeChild(perfectShape);
+                perfectShape = null;
+            }
+        });
+
+        function getEventCoordinates(event) {
+            const rect = drawingArea.getBoundingClientRect();
+            if (event.type.includes('touch')) {
+                return {
+                    x: event.touches[0].clientX - rect.left,
+                    y: event.touches[0].clientY - rect.top
+                };
+            } else {
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+            }
+        }
+
+        function startDrawing(event) {
+            event.preventDefault();
+            isAnimating = false;
+            if (rectangle) {
+                drawingArea.removeChild(rectangle);
+                rectangle = null;
+            }
+            if (perfectShape) {
+                drawingArea.removeChild(perfectShape);
+                perfectShape = null;
+            }
+
+            const { shape } = getLevelDetails(currentLevel);
+            const coords = getEventCoordinates(event);
+            startX = coords.x;
+            startY = coords.y;
+
+            rectangle = document.createElement('div');
+            rectangle.className = 'rectangle';
+            rectangle.style.left = startX + 'px';
+            rectangle.style.top = startY + 'px';
+            rectangle.style.width = '0px';
+            rectangle.style.height = '0px';
+            rectangle.style.borderRadius = shape === 'ellipse' ? '50%' : '0';
+            drawingArea.appendChild(rectangle);
+
+            isDrawing = true;
+            document.addEventListener('mousemove', draw);
+            document.addEventListener('touchmove', draw);
+            document.addEventListener('mouseup', stopDrawing);
+            document.addEventListener('touchend', stopDrawing);
+        }
+
+        function draw(event) {
+            if (!isDrawing) return;
+            event.preventDefault();
+            const coords = getEventCoordinates(event);
+            const currentX = Math.min(Math.max(coords.x, 0), drawingArea.clientWidth);
+            const currentY = Math.min(Math.max(coords.y, 0), drawingArea.clientHeight);
+
+            const left = Math.min(startX, currentX);
+            const top = Math.min(startY, currentY);
+            currentWidth = Math.abs(currentX - startX);
+            currentHeight = Math.abs(currentY - startY);
+
+            rectangle.style.left = left + 'px';
+            rectangle.style.top = top + 'px';
+            rectangle.style.width = currentWidth + 'px';
+            rectangle.style.height = currentHeight + 'px';
+        }
+
+        function stopDrawing(event) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            document.removeEventListener('mousemove', draw);
+            document.removeEventListener('touchmove', draw);
+            document.removeEventListener('mouseup', stopDrawing);
+            document.removeEventListener('touchend', stopDrawing);
+
+            const { requiredRatio, shape } = getLevelDetails(currentLevel);
+            let score;
+            if (currentWidth < 5 || currentHeight < 5) {
+                score = 0;
+                accuracyDiv.textContent = 'Accuracy: --';
+                if (perfectShape) {
+                    drawingArea.removeChild(perfectShape);
+                    perfectShape = null;
+                }
+                return;
+            } else {
+                const maxDim = Math.max(currentWidth, currentHeight);
+                const minDim = Math.min(currentWidth, currentHeight);
+                const drawnRatio = maxDim / minDim;
+                score = 100 * Math.min(drawnRatio / requiredRatio, requiredRatio / drawnRatio);
+            }
+            score = Math.round(score);
+
+            if (score >= 97.5) {
+                rectangle.style.backgroundColor = 'green';
+                accuracyDiv.innerHTML = `<span style="color: green;">Perfect! Accuracy: ${score}%</span>`;
+                isAnimating = true;
+                let velocityX = 5;
+                let velocityY = 5;
+                function animate() {
+                    if (!isAnimating || !drawingArea.contains(rectangle)) return;
+                    let currentLeft = parseFloat(rectangle.style.left);
+                    let currentTop = parseFloat(rectangle.style.top);
+                    let shapeWidth = rectangle.offsetWidth;
+                    let shapeHeight = rectangle.offsetHeight;
+                    if (currentLeft <= 0 || currentLeft + shapeWidth >= drawingArea.clientWidth) {
+                        velocityX = -velocityX;
+                    }
+                    if (currentTop <= 0 || currentTop + shapeHeight >= drawingArea.clientHeight) {
+                        velocityY = -velocityY;
+                    }
+                    rectangle.style.left = (currentLeft + velocityX) + 'px';
+                    rectangle.style.top = (currentTop + velocityY) + 'px';
+                    requestAnimationFrame(animate);
+                }
+                animate();
+                currentLevel++;
+                updateLevelInfo();
+            } else {
+                accuracyDiv.textContent = `Accuracy: ${isNaN(score) ? 0 : score}%`;
+                let perfectWidth, perfectHeight;
+                if (requiredRatio === 1) {
+                    perfectWidth = (currentWidth + currentHeight) / 2;
+                    perfectHeight = perfectWidth;
+                } else if (currentWidth >= currentHeight) {
+                    perfectWidth = requiredRatio * currentHeight;
+                    perfectHeight = currentHeight;
+                } else {
+                    perfectHeight = requiredRatio * currentWidth;
+                    perfectWidth = currentWidth;
+                }
+                perfectShape = document.createElement('div');
+                perfectShape.className = 'perfect-shape';
+                perfectShape.style.width = perfectWidth + 'px';
+                perfectShape.style.height = perfectHeight + 'px';
+                const centerX = parseFloat(rectangle.style.left) + currentWidth / 2;
+                const centerY = parseFloat(rectangle.style.top) + currentHeight / 2;
+                perfectShape.style.left = (centerX - perfectWidth / 2) + 'px';
+                perfectShape.style.top = (centerY - perfectHeight / 2) + 'px';
+                perfectShape.style.borderRadius = shape === 'ellipse' ? '50%' : '0';
+                drawingArea.appendChild(perfectShape);
+            }
+        }
+
+        drawingArea.addEventListener('mousedown', startDrawing);
+        drawingArea.addEventListener('touchstart', startDrawing);
+    </script>
+</body>
+</html>
